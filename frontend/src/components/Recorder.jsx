@@ -21,7 +21,7 @@ const Recorder = () => {
 
   async function startRecording() {
     try {
-      recordedChunks.length = 0;
+      recordedChunks.length = 0; // recordedChunks needed to be emptied before starting a new recording or it might contian previous recording
       const streamResult = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });

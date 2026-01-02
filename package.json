@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.6"
+  },
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build"
+  }
+}
