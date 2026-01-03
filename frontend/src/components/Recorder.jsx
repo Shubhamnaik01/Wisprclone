@@ -3,16 +3,19 @@ import Button from "@mui/material/Button";
 import { TextareaAutosize } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import MicNoneIcon from "@mui/icons-material/MicNone";
-import { useState } from "react";
-
-let recordedChunks = [];
-let mediaRecorder;
+import { useState, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 const Recorder = () => {
   const [accessGranted, setAccessGranted] = useState(false);
   const [recordingState, setRecordingState] = useState(false);
   const [urlaudio, setUrlAudio] = useState("");
-  let accessMessage = "";
+
+  const recordedChunksRef = useRef([]);
+  const mediaRecorderRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const processorRef = useRef(null);
+  const sourceRef = useRef(null);
 
   useEffect(() => {
     checkAccess();
@@ -21,15 +24,52 @@ const Recorder = () => {
 
   async function startRecording() {
     try {
-      recordedChunks.length = 0; // recordedChunks needed to be emptied before starting a new recording or it might contian previous recording
-      const streamResult = await navigator.mediaDevices.getUserMedia({
+      recordedChunksRef.current = []; // recordedChunks needed to be emptied before starting a new recording or it might contian previous recording
+      await invoke("start_listening");
+      console.log("RUST ACKNOWLEDGED");
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
-      mediaRecorder = new MediaRecorder(streamResult);
-      mediaRecorder.ondataavailable = (event) => {
-        recordedChunks.push(event.data);
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = async (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
       };
       mediaRecorder.start();
+
+      const audioContext = new AudioContext({ sampleRate: 48000 });
+      await audioContext.resume();
+      audioContextRef.current = audioContext;
+
+      const source = audioContext.createMediaStreamSource(stream);
+      sourceRef.current = source;
+
+      const processor = audioContext.createScriptProcessor(2048, 1, 1); // smaller buffer = lower latency
+      processorRef.current = processor;
+
+      processor.onaudioprocess = async (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(input.length);
+
+        for (let i = 0; i < input.length; i++) {
+          pcm16[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+        }
+
+        try {
+          await invoke("send_audio_chunk", {
+            chunk: Array.from(new Uint8Array(pcm16.buffer)),
+          });
+        } catch (err) {
+          console.error("Failed to send chunk to Rust:", err);
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
       console.log("Recording started");
     } catch (error) {
       setRecordingState(false);
@@ -52,19 +92,31 @@ const Recorder = () => {
   }
 
   function stopRecording() {
-    mediaRecorder.stop();
+    const mediaRecorder = mediaRecorderRef.current;
+    const audioContext = audioContextRef.current;
+    const processor = processorRef.current;
+    const source = sourceRef.current;
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: "audio/webm" });
+      if (urlaudio) URL.revokeObjectURL(urlaudio);
+      const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
       const url = URL.createObjectURL(blob);
       setUrlAudio(url);
-      recordedChunks = [];
+      recordedChunksRef.current = [];
     };
+
+    processor?.disconnect();
+    source?.disconnect();
+    audioContext?.close();
+    mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+
+    mediaRecorder.stop();
+
     console.log("Recording Stopped");
   }
 
   return (
-    <div className="flex flex-col justify-center items-center h-screen gap-4">
+    <div className="flex flex-col justify-center items-center gap-4">
       <IconButton
         color="primary"
         sx={{
@@ -105,7 +157,9 @@ const Recorder = () => {
           Please provide microphone access
         </h1>
       )}
-      {urlaudio && <audio controls src={urlaudio} className="mt-2" />}
+      {urlaudio && (
+        <audio key={urlaudio} controls src={urlaudio} className="mt-2" />
+      )}
     </div>
   );
 };
