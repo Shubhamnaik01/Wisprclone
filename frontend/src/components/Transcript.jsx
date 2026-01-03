@@ -68,7 +68,7 @@ const Transcript = () => {
 
       <p className="whitespace-pre-wrap">
         {finalText}
-        <span> {interimText}</span>
+        <span className="opacity-50"> {interimText}</span>
       </p>
     </div>
   );
