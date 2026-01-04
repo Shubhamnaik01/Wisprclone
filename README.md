@@ -68,21 +68,31 @@ DEEPGRAM_API_KEY=your_deepgram_api_key_here
 
 ### 1️⃣ Install dependencies
 
+From the project root:
+
 ```bash
 npm install
 ```
 
-### 2️⃣ Start the Tauri app
+### 2️⃣ Install frontend dependencies
 
 ```bash
-npm run tauri dev
+cd frontend
+npm install
+```
+
+### 3️⃣ Run the Tauri application
+
+From the project root:
+
+```bash
+cargo tauri dev
 ```
 
 This will:
 
 - Start the React frontend
 - Launch the Tauri desktop window
-- Initialize the Rust backend
 
 ---
 
