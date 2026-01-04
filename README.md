@@ -119,14 +119,13 @@ This will:
 
 ## ⚠️ Known Limitations
 
-- Interim transcript finalization
-  In rare cases, the last few spoken words may remain as interim results if recording is stopped abruptly. This is a known  
-  behavior in real-time streaming transcription systems and depends on silence detection and stream closure timing.
-- Latency dependency
+- Interim transcript finalization :
+  In rare cases, the last few spoken words may remain as interim results if recording is stopped abruptly. This is a known behavior in real-time streaming transcription systems and depends on silence detection and stream closure timing.
+- Latency dependency :
   Transcription latency may vary based on network conditions, microphone quality, and system performance.
-- Accuracy varies with environment
+- Accuracy varies with environment :
   Background noise, accents, or unclear speech may reduce transcription accuracy, as expected with live speech recognition.
-- Single-language focus
+- Single-language focus :
   The application is currently optimized for English speech only.
 
 ---
